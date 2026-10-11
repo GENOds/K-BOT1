@@ -7,6 +7,7 @@ Set the bot token in Replit Secrets as TOKEN.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -394,35 +395,95 @@ async def season_command(
     await interaction.response.send_message("Inviato!", ephemeral=True)
 
 
-@bot.tree.command(name="clearbot", description="Elimina fino agli ultimi 30 messaggi del canale.")
-@app_commands.check(is_staff)
-async def clearbot_command(interaction: discord.Interaction) -> None:
-    if interaction.channel is None or bot.user is None:
-        await send_ephemeral_error(interaction, "❌ Canale non disponibile.")
-        return
+@bot.tree.command(name="clearbot", description="Elimina fino al numero indicato di messaggi.")
+@app_commands.describe(amount="Numero massimo di messaggi da eliminare (da 1 a 100)")
+async def clearbot_command(
+    interaction: discord.Interaction,
+    amount: app_commands.Range[int, 1, 100] = 30,
+) -> None:
+    try:
+        await interaction.response.defer(ephemeral=True)
 
-    to_delete = [
-        message
-        async for message in interaction.channel.history(limit=30)
-    ]
+        if (
+            not isinstance(interaction.user, discord.Member)
+            or not interaction.user.guild_permissions.manage_messages
+        ):
+            await interaction.followup.send("Non hai permessi", ephemeral=True)
+            return
 
-    deleted = 0
-    for message in to_delete:
-        try:
-            await message.delete()
-            deleted += 1
-        except discord.NotFound:
-            continue
-        except discord.Forbidden:
-            await send_ephemeral_error(
-                interaction,
-                f"❌ Mi serve il permesso Gestisci messaggi. Eliminati {deleted} messaggi.",
+        if not await is_staff(interaction):
+            await interaction.followup.send(
+                "❌ Solo gli utenti con il ruolo STAFF possono usare questo comando.",
+                ephemeral=True,
             )
             return
-    await interaction.response.send_message(
-        f"🧹 Eliminati {deleted} messaggi.",
-        ephemeral=True,
-    )
+
+        if interaction.channel is None:
+            await interaction.followup.send(
+                "Non ho permessi per cancellare qui",
+                ephemeral=True,
+            )
+            return
+
+        try:
+            deleted = await interaction.channel.purge(limit=amount)
+        except discord.Forbidden:
+            await interaction.followup.send(
+                "Non ho permessi per cancellare qui",
+                ephemeral=True,
+            )
+            return
+        except discord.HTTPException as error:
+            error_text = str(error).lower()
+            is_fourteen_day_bulk_delete_error = (
+                error.code == 50034
+                or "14 days" in error_text
+                or "two weeks" in error_text
+            )
+            if not is_fourteen_day_bulk_delete_error:
+                raise
+
+            logger.warning(
+                "Bulk purge hit Discord's 14-day limit; deleting messages individually.",
+                exc_info=True,
+            )
+            deleted = []
+            async for message in interaction.channel.history(limit=amount):
+                try:
+                    await message.delete()
+                    deleted.append(message)
+                except discord.NotFound:
+                    continue
+                await asyncio.sleep(1)
+
+        await interaction.followup.send(
+            f"Puliti {len(deleted)} messaggi",
+            ephemeral=True,
+        )
+    except discord.Forbidden:
+        logger.exception("Discord denied the /clearbot operation.")
+        try:
+            await interaction.followup.send(
+                "Non ho permessi per cancellare qui",
+                ephemeral=True,
+            )
+        except Exception:
+            logger.exception("Could not send the /clearbot permission error.")
+    except Exception:
+        logger.exception("Unexpected error while running /clearbot.")
+        try:
+            if interaction.response.is_done():
+                await interaction.followup.send(
+                    "Errore durante la pulizia dei messaggi.",
+                    ephemeral=True,
+                )
+            else:
+                await interaction.response.send_message(
+                    "Errore durante la pulizia dei messaggi.",
+                    ephemeral=True,
+                )
+        except Exception:
+            logger.exception("Could not send the /clearbot error response.")
 
 
 @bot.tree.error
