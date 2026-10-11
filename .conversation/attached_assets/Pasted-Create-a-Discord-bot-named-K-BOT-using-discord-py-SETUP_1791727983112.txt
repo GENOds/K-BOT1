@@ -1,0 +1,63 @@
+Create a Discord bot named K~BOT using discord.py.
+
+SETUP:
+- Prefix is "?"
+- Use discord.Intents.all()
+- Token from os.getenv("TOKEN")
+- on_ready should sync slash commands with await bot.tree.sync()
+- Use json files for persistence: flag_wins.json and messages.json
+- Single file main.py
+
+I need EXACTLY 12 COMMANDS:
+
+--- 6 COMMUNITY COMMANDS (with ? prefix) ---
+
+1. ?flag
+When used, bot sends a random flag emoji from this list: 🇮🇹=italia, 🇯🇵=giappone, 🇺🇸=usa, 🇫🇷=francia, 🇪🇸=spagna, 🇩🇪=germania, 🇬🇧=inghilterra, 🇧🇷=brasile.
+Store the correct answer (e.g. "italia") in a global variable current_flag.
+Also in on_message event: if a user types the correct country name in lowercase and current_flag is not None, add 1 win to flag_wins.json for that user and reply: "🏆 @user mention ha indovinato, 🏆 vittorie totali= X 🏆" then set current_flag = None. This logic is PART OF the ?flag command, NOT a separate command.
+
+2. ?topflag
+Read flag_wins.json and show top 10 leaderboard sorted by wins descending. Format: "🏆 TOP FLAG LEADERBOARD 🏆" then numbered list like "1. @user - 5 wins"
+
+3. ?descrizione
+DM the author with exact text:
+KROMA® - BEYOND CLOTHING
+
+Non è solo streetwear, è attitudine.
+
+Ogni drop è limitato, ogni pezzo è studiato nei minimi dettagli.
+
+Entra nella community, resta attivo e non perderti il prossimo.
+
+— KROMA STAFF —
+Then reply in channel "📩 Ti ho mandato la descrizione in DM!" If DMs closed, reply "❌ Non riesco a mandarti DM, aprili!"
+
+4. ?msg
+In on_message, count every user message in messages.json. Command replies: "📩 @user mention hai scritto X messaggi negli ultimi 7 giorni"
+
+5. ?servertime
+Track user join time with on_member_join storing datetime.now() in dict. Command replies: "⏱️ @user mention sei stato online per Xh Ym da quando sei entrato"
+
+6. ?timeleaderboard
+Show top 10 users by longest online time from the time_online dict. Format: "⏰ TIME LEADERBOARD" then list "1. @user - Xh Ym"
+
+--- 6 STAFF SLASH COMMANDS (only users with role named "STAFF" can use, check role) ---
+
+7. /release name:str category:str tag:str photo:discord.Attachment
+Send formatted message: "—--:RELEASE:—--\n\n📝 NAME: {name}\n\n👕 CATEGORY: {category}\n\n🏷️ TAG: {tag}" then send photo.url as second message.
+
+8. /stafflist
+Only for STAFF. Get all guild members with role STAFF. Send: "—--:STAFFLIST:—--\n\n👑 @user - STAFF" for each, in uppercase.
+
+9. /say testo:str
+Send the testo string content in the channel. Ephemeral response "Inviato!"
+
+10. /price name:str price_val:str photo:discord.Attachment
+Send: "—--:PRICE:—--\n\n📝 NAME: {name}\n\n💰 PRICE: {price_val}\n\n@everyone @here" then send photo.url
+
+11. /season name:str photo:discord.Attachment
+Send: "—--: NEW SEASON :—--\n\n📝 NAME: {name}\n\n@everyone @here" then send photo.url
+
+12. /clearbot
+Delete only the last 100 messages sent by the bot itself in that channel. Reply with how many deleted.
