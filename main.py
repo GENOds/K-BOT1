@@ -394,19 +394,17 @@ async def season_command(
     await interaction.response.send_message("Inviato!", ephemeral=True)
 
 
-@bot.tree.command(name="clearbot", description="Elimina fino agli ultimi 100 messaggi del bot.")
+@bot.tree.command(name="clearbot", description="Elimina fino agli ultimi 30 messaggi del canale.")
 @app_commands.check(is_staff)
 async def clearbot_command(interaction: discord.Interaction) -> None:
     if interaction.channel is None or bot.user is None:
         await send_ephemeral_error(interaction, "❌ Canale non disponibile.")
         return
 
-    to_delete = []
-    async for message in interaction.channel.history(limit=None):
-        if message.author.id == bot.user.id:
-            to_delete.append(message)
-            if len(to_delete) == 100:
-                break
+    to_delete = [
+        message
+        async for message in interaction.channel.history(limit=30)
+    ]
 
     deleted = 0
     for message in to_delete:
@@ -415,8 +413,14 @@ async def clearbot_command(interaction: discord.Interaction) -> None:
             deleted += 1
         except discord.NotFound:
             continue
+        except discord.Forbidden:
+            await send_ephemeral_error(
+                interaction,
+                f"❌ Mi serve il permesso Gestisci messaggi. Eliminati {deleted} messaggi.",
+            )
+            return
     await interaction.response.send_message(
-        f"🧹 Eliminati {deleted} messaggi del bot.",
+        f"🧹 Eliminati {deleted} messaggi.",
         ephemeral=True,
     )
 
