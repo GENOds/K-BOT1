@@ -508,4 +508,5 @@ token = os.getenv("TOKEN")
 if not token:
     raise RuntimeError("Missing Discord bot token. Add it as the Replit secret TOKEN.")
 
+keep_alive()
 bot.run(token)
